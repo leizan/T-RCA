@@ -66,11 +66,11 @@ str_to_node = {'a': a,
                'f': f}
 
 list_mechanisme = ['different_path', 'one_path']
-list_process = ['E1']  #['E1', 'E2']
-list_scenarios = ['certain', 'certain_SL', 'uncertain_0.3', 'uncertain_0.3_SL']
+list_process = ['T-DSCM']
+list_scenarios = ['certain', 'certain_SC', 'uncertain', 'uncertain_SC']
 list_sampling_number = [20, 50, 200, 10, 100, 500, 1000, 2000] # [10, 100, 500, 1000, 2000]
 list_num_inters = [2]
-list_sig_level = [0.01, 0.05]
+list_sig_level = [0.01]
 
 gamma_min = 1
 gamma_max = 1

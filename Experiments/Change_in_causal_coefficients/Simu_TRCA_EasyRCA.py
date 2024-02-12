@@ -1,15 +1,12 @@
-import os
 import json
-import pandas as pd
-import numpy as np
-from tqdm import tqdm
-import networkx as nx
-from raitia import RAITIA2011
-from tigramite.pcmci import PCMCI
-from tigramite import data_processing as pp
-from tigramite.independence_tests.gsquared import Gsquared
-from T_RCA import TRCA
+import os
 
+import networkx as nx
+import numpy as np
+import pandas as pd
+from tqdm import tqdm
+
+from T_RCA import TRCA
 
 
 def dict_to_graph(graph_dict, inter_nodes):
@@ -42,16 +39,18 @@ def cal_precision_recall(ground_truth, predicion):
     else:
         return (true_pred/pred_num, true_pred/truth_num)
 
-list_mechanisme = ['EasyRCA']
-list_scenarios = ['Parametric'] # ['Parametric', 'Structual']
-list_sampling_number = [10, 100, 500, 1000, 2000, 20, 50, 200] #[10, 100, 500, 1000, 2000]
+list_mechanisme = ['Change_in_causal_coefficients']
+list_scenarios = ['different_path', 'one_path']
+list_sampling_number = [10, 20, 50, 100, 200, 500, 1000, 2000]
 list_num_inters = [2]
-list_sig_level = [0.01] # [0.01, 0.05]
+list_sig_level = [0.01] 
 historical_data_length = 20000
 normal_ratio = 0.9
 abnormal_ratio = 0
 
+gamma_min = 1
 gamma_max = 1
+
 
 for mechanisme in list_mechanisme:
     for scenario in list_scenarios:
@@ -82,8 +81,6 @@ for mechanisme in list_mechanisme:
                     actual_data = whole_data.iloc[historical_data_length:historical_data_length+sampling_number].reset_index(drop=True)
                     param_threshold_dict = {}
                     for node in param_data.columns:
-                        # param_threshold_dict[node] = [normal_ratio*np.mean(param_data[node].values) + abnormal_ratio*np.mean(actual_data[node].values)]
-                        # param_threshold_dict[node] = [normal_ratio*np.mean(param_data[node].values) + abnormal_ratio*np.mean(actual_data[node].values)]
                         param_threshold_dict[node] = [np.sort(param_data[node])[int(normal_ratio*param_data[node].shape[0])]]
 
                     histo_data_info = os.path.join('..', '..', 'RCA_simulated_data', os.path.join(mechanisme, scenario), 'data_info', data_path.split('/')[-1].replace('data', 'info').replace('csv', 'json'))
@@ -91,27 +88,6 @@ for mechanisme in list_mechanisme:
                         histo_data_info = json.load(json_file)
                     true_root_causes = histo_data_info["intervention_nodes"]
 
-                    # discretize the data
-                    for column in param_data.columns:
-                        param_data.loc[:, column] = param_data[column].values >= param_threshold_dict[column][0]
-
-                    # genarate the OSCG
-                    data_frame = pp.DataFrame(param_data.values, var_names=param_data.columns) # ,data_type=np.ones(shape=param_data.values.shape)
-                    Gsquard_test = Gsquared(significance='analytic')
-                    pcmci = PCMCI(dataframe=data_frame, cond_ind_test=Gsquard_test, verbosity=-1)
-
-                    results = pcmci.run_pcmci(tau_min=1, tau_max=gamma_max, pc_alpha=sig_level, alpha_level=sig_level)
-                    matrix_graph = results['graph']
-
-                    OSCG = nx.DiGraph()
-                    OSCG.add_nodes_from(param_data.columns)
-
-                    for i in range(len(param_data.columns)):
-                        for m in range(len(param_data.columns)):
-                            if matrix_graph[i,m,1] == '-->':
-                                OSCG.add_edge(param_data.columns[i], param_data.columns[m])
-                            elif matrix_graph[i,m,1] == '<--':
-                                OSCG.add_edge(param_data.columns[m], param_data.columns[i])
 
                     json_file_path = os.path.join('..', '..', 'RCA_simulated_data', 'graphs', data_path.split('/')[-1].replace('data', 'graph').replace('csv', 'json'))
                     with open(json_file_path, 'r') as json_file:
@@ -125,9 +101,7 @@ for mechanisme in list_mechanisme:
                         # find root causes
                         normal_node = []
                         pred_root_causes = []
-                        # for node in actual_data.columns:
-                        #     if not (actual_data[node] > param_threshold_dict[node][0]).any():
-                        #         normal_node.append(node)
+
 
                         true_normal_graph = dict_to_graph(graph_dict=json_graph, inter_nodes=[])
                         descendants = set()
@@ -139,105 +113,15 @@ for mechanisme in list_mechanisme:
 
                         normal_node = [node for node in actual_data.columns if node not in descendants]
 
-                        OSCG_copy = OSCG.copy()
-                        # print('Abnormal nodes 1')
-                        # print([i for i in list(OSCG_copy.nodes) if i not in normal_node])
+                        pred_root_causes,_ = TRCA(offline_data=param_data, online_data=actual_data, ts_thresholds=param_threshold_dict,
+                                                    gamma_min=gamma_min, gamma_max=gamma_max, sig_level=sig_level, TSCG=None, save_TSCG=False, save_TSCG_path=None,
+                                                    know_normal_node=True, normal_node=normal_node)
 
-                        if len(normal_node) != 0:
-                            OSCG_copy.remove_nodes_from(normal_node)
-                        for node in OSCG_copy.nodes:
-                            parents_of_node = list(OSCG_copy.predecessors(node))
-                            if len(parents_of_node) == 0:
-                                pred_root_causes.append(node)
-                            else:
-                                if (len(parents_of_node) == 1) and parents_of_node[0] == node:
-                                    pred_root_causes.append(node)
 
-                        #########################################################
-                        if len(pred_root_causes) == 0:
-                            strongly_connected_components = list(nx.strongly_connected_components(OSCG_copy))
-                            for scc in strongly_connected_components:
-                                parent_set_scc = []
-                                for node in scc:
-                                    for ele in OSCG_copy.predecessors(node):
-                                        parent_set_scc.append(ele)
-                                parent_set_scc = set(parent_set_scc)
-                                if parent_set_scc.issubset(scc):
-                                    if len(scc) == 1:
-                                        pred_root_causes.append(scc[0])
-                                    else:
-                                        first_anomly_nodes = []
-                                        for index in range(actual_data.values.shape[0]):
-                                            for node in scc:
-                                                if actual_data[node].values[index] > param_threshold_dict[node][0]:
-                                                    first_anomly_nodes.append(node)
-                                            if len(first_anomly_nodes) != 0:
-                                                break
-                                        for node in first_anomly_nodes:
-                                            pred_root_causes.append(node)
-
-                        #########################################################
-
-                        # print('prediction 1')
+                        # print('True toot causes')
+                        # print(true_root_causes)
+                        # print('predicted root cuases')
                         # print(pred_root_causes)
-                        # if mechanisme == 'EasyRCA':
-                        #     remain_root_causes = [i for i in true_root_causes if i not in pred_root_causes]
-                        #     descendants_of_roots = []
-                        #     if len(remain_root_causes) != 0:
-                        #         for root in remain_root_causes:
-                        #             if len(nx.descendants(true_inter_graph, root)) != 0:
-                        #                 for i in nx.descendants(true_inter_graph, root):
-                        #                     descendants_of_roots.append(i)
-                        #         descendants_of_roots = list(set(descendants_of_roots))
-                        #
-                        #         new_normal_node = [i for i in true_inter_graph.nodes if i not in remain_root_causes and i not in descendants_of_roots]
-                        #
-                        #         OSCG_copy = OSCG.copy()
-                        #         # print('Abnormal nodes 2')
-                        #         # print([i for i in list(OSCG_copy.nodes) if i not in new_normal_node])
-                        #
-                        #         if len(new_normal_node) != 0:
-                        #             OSCG_copy.remove_nodes_from(new_normal_node)
-                        #         for node in OSCG_copy.nodes:
-                        #             parents_of_node = list(OSCG_copy.predecessors(node))
-                        #             if len(parents_of_node) == 0:
-                        #                 pred_root_causes.append(node)
-                        #             else:
-                        #                 if (len(parents_of_node) == 1) and parents_of_node[0] == node:
-                        #                     pred_root_causes.append(node)
-                        #
-                        #         #########################################################
-                        #         if len(pred_root_causes) == 0:
-                        #             strongly_connected_components = list(nx.strongly_connected_components(OSCG_copy))
-                        #             for scc in strongly_connected_components:
-                        #                 parent_set_scc = []
-                        #                 for node in scc:
-                        #                     for ele in OSCG_copy.predecessors(node):
-                        #                         parent_set_scc.append(ele)
-                        #                 parent_set_scc = set(parent_set_scc)
-                        #                 if parent_set_scc.issubset(scc):
-                        #                     if len(scc) == 1:
-                        #                         pred_root_causes.append(scc[0])
-                        #                     else:
-                        #                         first_anomly_nodes = []
-                        #                         for index in range(actual_data.values.shape[0]):
-                        #                             for node in scc:
-                        #                                 if actual_data[node].values[index] > param_threshold_dict[node][0]:
-                        #                                     first_anomly_nodes.append(node)
-                        #                             if len(first_anomly_nodes) != 0:
-                        #                                 break
-                        #                         for node in first_anomly_nodes:
-                        #                             pred_root_causes.append(node)
-                        #
-                        #             #########################################################
-
-                                # print('prediction 2')
-                                # print(pred_root_causes)
-
-                        print('True toot causes')
-                        print(true_root_causes)
-                        print('predicted root cuases')
-                        print(pred_root_causes)
 
                         pred_root_causes = list(set(pred_root_causes))
                         pre, recall = cal_precision_recall(ground_truth=true_root_causes, predicion=pred_root_causes)
@@ -264,6 +148,6 @@ for mechanisme in list_mechanisme:
                     complete_final_res[str(sig_level)][str(sampling_number)] = res[str(num_inter)][str(sig_level)]
                     simple_final_res[str(sig_level)][str(sampling_number)] = res[str(num_inter)][str(sig_level)]['MF_SF']
 
-        # simple_res_path = os.path.join('..', '..', 'Results_sim_20000', mechanisme, scenario, 'PC.json')   # 'PC_withuot_agent.json'
-        # with open(simple_res_path, 'w') as json_file:
-        #     json.dump(simple_final_res, json_file)
+        simple_res_path = os.path.join('..', '..', 'Results', mechanisme, scenario, 'TRCA.json')
+        with open(simple_res_path, 'w') as json_file:
+            json.dump(simple_final_res, json_file)

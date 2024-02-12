@@ -1,12 +1,12 @@
-import os
 import json
-import pandas as pd
-import numpy as np
-from tqdm import tqdm
+
 import networkx as nx
-from tigramite.pcmci import PCMCI
+import pandas as pd
 from tigramite import data_processing as pp
 from tigramite.independence_tests.gsquared import Gsquared
+from tigramite.pcmci import PCMCI
+
+pd.options.mode.chained_assignment = None
 
 def TRCA(offline_data, online_data, ts_thresholds, gamma_min, gamma_max, sig_level, TSCG, save_TSCG, save_TSCG_path, know_normal_node, normal_node):
     if TSCG is None:
@@ -25,7 +25,6 @@ def TRCA(offline_data, online_data, ts_thresholds, gamma_min, gamma_max, sig_lev
         pcmci = PCMCI(dataframe=data_frame, cond_ind_test=Gsquard_test, verbosity=-1)
 
         results = pcmci.run_pcmci(tau_min=gamma_min, tau_max=gamma_max, pc_alpha=sig_level, alpha_level=sig_level)
-        # results = pcmci.run_pcmciplus(tau_min=gamma_min, tau_max=gamma_max, pc_alpha=sig_level)
         matrix_graph = results['graph']
 
         TSCG = nx.DiGraph()

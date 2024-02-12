@@ -1,17 +1,30 @@
+import json
+import os
+
+import networkx as nx
 import numpy as np
 import pandas as pd
-import networkx as nx
-
-import os
-import json
 from tqdm import tqdm
-
-from tigramite.pcmci import PCMCI
-from tigramite import data_processing as pp
-from tigramite.independence_tests.gsquared import Gsquared
 
 from T_RCA import TRCA
 
+
+def dict_to_graph(graph_dict, inter_nodes):
+    # Create an empty directed graph
+    graph = nx.DiGraph()
+
+    # Iterate through the dictionary and add nodes and edges to the graph
+    for parent, children in graph_dict.items():
+        # Add the parent node to the graph
+        graph.add_node(parent)
+
+        # Iterate through the children of the parent
+        for child in children.keys():
+            # Add the child node to the graph and create a directed edge from parent to child
+            graph.add_node(child)
+            if child not in inter_nodes:
+                graph.add_edge(parent, child)
+    return graph
 
 def cal_precision_recall(ground_truth, predicion):
     pred_num = len(predicion)
@@ -26,32 +39,17 @@ def cal_precision_recall(ground_truth, predicion):
     else:
         return (true_pred/pred_num, true_pred/truth_num)
 
-
-causal_graph = nx.DiGraph([('www', 'Website'),
-                           ('Auth Service', 'www'),
-                           ('API', 'www'),
-                           ('Customer DB', 'Auth Service'),
-                           ('Customer DB', 'API'),
-                           ('Product Service', 'API'),
-                           ('Auth Service', 'API'),
-                           ('Order Service', 'API'),
-                           ('Shipping Cost Service', 'Product Service'),
-                           ('Caching Service', 'Product Service'),
-                           ('Product DB', 'Caching Service'),
-                           ('Customer DB', 'Product Service'),
-                           ('Order DB', 'Order Service')])
-
-
+list_mechanisme = ['Change_in_causal_coefficients']
+list_scenarios = ['one_path']
 list_sampling_number = [10, 20, 50, 100, 200, 500, 1000, 2000]
 list_num_inters = [2]
 list_sig_level = [0.01]
-list_mechanisme = ['Change_in_noise']
-list_scenarios = ['different_path', 'one_path']
+historical_data_length = 20000
 normal_ratio = 0.9
+abnormal_ratio = 0
+
 gamma_min = 1
 gamma_max = 1
-historical_data_length = 20000
-
 
 for mechanisme in list_mechanisme:
     for scenario in list_scenarios:
@@ -66,7 +64,7 @@ for mechanisme in list_mechanisme:
             res = {}
             for i in list_num_inters:
                 res[str(i)] = {}
-            for sig_level in list_sig_level:  #np.arange(0.01, 0.2, 0.04).tolist():
+            for sig_level in list_sig_level:
                 Pre = {}
                 Recall = {}
                 F1 = {}
@@ -76,40 +74,74 @@ for mechanisme in list_mechanisme:
                     F1[str(num_inter)] = []
                 for data_path in tqdm(data_files):
                     #establish OSCG based on historical data
+                    categorical_nodes = []
                     whole_data = pd.read_csv(data_path)
                     param_data = whole_data.head(historical_data_length)
-                    normal_data = param_data.copy(deep=True)
                     actual_data = whole_data.iloc[historical_data_length:historical_data_length+sampling_number].reset_index(drop=True)
-
-                    data_info_path = os.path.join('..', '..', 'RCA_simulated_data', os.path.join(mechanisme, scenario), 'data_info', data_path.split('/')[-1].replace('data', 'data_info').replace('csv', 'json'))
-                    with open(data_info_path, 'r') as json_file:
-                        data_info = json.load(json_file)
-                    true_root_causes = data_info["intervention_nodes"]
-
                     param_threshold_dict = {}
                     for node in param_data.columns:
                         param_threshold_dict[node] = [np.sort(param_data[node])[int(normal_ratio*param_data[node].shape[0])]]
 
+                    histo_data_info = os.path.join('..', '..', 'RCA_simulated_data', os.path.join(mechanisme, scenario), 'data_info', data_path.split('/')[-1].replace('data', 'info').replace('csv', 'json'))
+                    with open(histo_data_info, 'r') as json_file:
+                        histo_data_info = json.load(json_file)
+                    true_root_causes = histo_data_info["intervention_nodes"]
+
+                    json_file_path = os.path.join('..', '..', 'RCA_simulated_data', 'graphs', data_path.split('/')[-1].replace('data', 'graph').replace('csv', 'json'))
+                    with open(json_file_path, 'r') as json_file:
+                        json_graph = json.load(json_file)
+
                     for num_inter in list_num_inters:
 
+                        # Convert the loaded JSON data into a NetworkX graph
+                        true_inter_graph = dict_to_graph(graph_dict=json_graph, inter_nodes=true_root_causes)
 
                         # find root causes
                         normal_node = []
                         pred_root_causes = []
 
-                        for node in actual_data.columns:
-                            if np.array_equal(actual_data[node].values, normal_data[node].values[:sampling_number]):
-                                normal_node.append(node)
+                        true_normal_graph = dict_to_graph(graph_dict=json_graph, inter_nodes=[])
+                        descendants = set()
+                        for node in true_root_causes:
+                            descendants |= set(nx.descendants(true_normal_graph, node))
 
-                        pred_root_causes,_ = TRCA(offline_data=param_data, online_data=actual_data, ts_thresholds=param_threshold_dict,
+                        descendants = list(descendants)
+                        descendants = list(set(descendants +true_root_causes))
+
+                        normal_node = [node for node in actual_data.columns if node not in descendants]
+
+
+                        pred_root_causes, TSCG = TRCA(offline_data=param_data, online_data=actual_data, ts_thresholds=param_threshold_dict,
                                                     gamma_min=gamma_min, gamma_max=gamma_max, sig_level=sig_level, TSCG=None, save_TSCG=False, save_TSCG_path=None,
-                                                    know_normal_node=True, normal_node=normal_node)
+                                                     know_normal_node=True, normal_node=normal_node)
 
-                        pred_root_causes = list(set(pred_root_causes))
+
+                        remain_root_causes = [i for i in true_root_causes if i not in pred_root_causes]
+                        descendants_of_roots = []
+                        if len(remain_root_causes) != 0:
+                            for root in remain_root_causes:
+                                if len(nx.descendants(true_inter_graph, root)) != 0:
+                                    for i in nx.descendants(true_inter_graph, root):
+                                        descendants_of_roots.append(i)
+                            descendants_of_roots = list(set(descendants_of_roots))
+
+                            new_normal_node = [i for i in true_inter_graph.nodes if i not in remain_root_causes and i not in descendants_of_roots]
+
+                            TSCG_copy = TSCG.copy()
+
+                            inferred_root_causes, _ = TRCA(offline_data=param_data, online_data=actual_data, ts_thresholds=param_threshold_dict,
+                                                gamma_min=gamma_min, gamma_max=gamma_max, sig_level=sig_level, TSCG=TSCG_copy, save_TSCG=False, save_TSCG_path=None,
+                                                 know_normal_node=True, normal_node=new_normal_node)
+
+                            for node in inferred_root_causes:
+                                pred_root_causes.append(node)
+
                         # print('True toot causes')
                         # print(true_root_causes)
-                        # print('predicted root causes')
+                        # print('predicted root cuases')
                         # print(pred_root_causes)
+
+                        pred_root_causes = list(set(pred_root_causes))
                         pre, recall = cal_precision_recall(ground_truth=true_root_causes, predicion=pred_root_causes)
                         Pre[str(num_inter)].append(pre)
                         Recall[str(num_inter)].append(recall)
@@ -134,6 +166,6 @@ for mechanisme in list_mechanisme:
                     complete_final_res[str(sig_level)][str(sampling_number)] = res[str(num_inter)][str(sig_level)]
                     simple_final_res[str(sig_level)][str(sampling_number)] = res[str(num_inter)][str(sig_level)]['MF_SF']
 
-        simple_res_path = os.path.join('..', '..', 'Results', mechanisme, scenario, 'TRCA.json')
+        simple_res_path = os.path.join('..', '..', 'Results', mechanisme, scenario, 'TRCA_agent.json')
         with open(simple_res_path, 'w') as json_file:
             json.dump(simple_final_res, json_file)
