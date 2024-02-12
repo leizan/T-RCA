@@ -50,7 +50,7 @@ gamma_max = 1
 list_mechanisme = ['different_path', 'one_path']
 list_process = ['T-DSCM']
 list_scenarios = ['certain', 'certain_SC', 'uncertain', 'uncertain_SC']
-list_sampling_number = [20, 50, 200, 10, 100, 500, 1000, 2000]
+list_sampling_number = [20, 50, 200, 10, 100, 500, 1000, 2000] # [10, 20, 50, 100, 200, 500, 1000, 2000]
 list_num_inters = [2]
 list_sig_level = [0.01]
 historical_data_length = 20000
@@ -66,7 +66,7 @@ for mechanisme in list_mechanisme:
                 complete_final_res[str(sig_level)] = {}
                 simple_final_res[str(sig_level)] = {}
             for sampling_number in list_sampling_number:
-                data_folder_path = os.path.join('..', 'RCA_simulated_data', os.path.join(process, scenario), 'historical_data_20000')
+                data_folder_path = os.path.join('..', 'RCA_simulated_data', os.path.join(process, scenario), 'offline_data')
                 data_files = [os.path.join(data_folder_path, f) for f in os.listdir(data_folder_path) if os.path.isfile(os.path.join(data_folder_path, f))]
                 res = {}
                 for i in list_num_inters:
@@ -83,7 +83,7 @@ for mechanisme in list_mechanisme:
                         #establish OSCG based on historical data
                         categorical_nodes = []
                         param_data = pd.read_csv(data_path)
-                        histo_data_info = os.path.join('..', 'RCA_simulated_data', os.path.join(process, scenario), 'data_info_20000', data_path.split('/')[-1].replace('data', 'info').replace('csv', 'json'))
+                        histo_data_info = os.path.join('..', 'RCA_simulated_data', os.path.join(process, scenario), 'offline_data_info', data_path.split('/')[-1].replace('data', 'info').replace('csv', 'json'))
                         with open(histo_data_info, 'r') as json_file:
                             histo_data_info = json.load(json_file)
                         param_threshold_dict = histo_data_info['nodes_thres']
@@ -102,9 +102,9 @@ for mechanisme in list_mechanisme:
                             normal_node = []
                             # pred_root_causes = []
                             if mechanisme == 'one_path':
-                                actual_data = pd.read_csv(data_path.replace('historical_data_20000', 'LOG_actual_data_same_path_2_inters_2000'))
+                                actual_data = pd.read_csv(data_path.replace('offline_data', 'LOG_actual_data_same_path_2_inters_2000'))
                             else:
-                                actual_data = pd.read_csv(data_path.replace('historical_data_20000', 'LOG_actual_data_2_inters_2000'))
+                                actual_data = pd.read_csv(data_path.replace('offline_data', 'LOG_actual_data_2_inters_2000'))
 
                             actual_data = actual_data.head(historical_data_length + sampling_number)
 

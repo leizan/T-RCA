@@ -48,7 +48,7 @@ def cal_precision_recall(ground_truth, predicion):
 list_mechanisme = ['different_path', 'one_path']
 list_process = ['T-DSCM']
 list_scenarios = ['certain', 'certain_SC', 'uncertain', 'uncertain_SC']
-list_sampling_number = [20, 50, 200] # [10, 100, 500, 1000, 2000]
+list_sampling_number = [10, 20, 50, 100, 200, 500, 1000, 2000]
 list_num_inters = [2]
 list_sig_level = [0.01]
 
@@ -58,25 +58,18 @@ gamma_max = 1
 for mechanisme in list_mechanisme:
     for process in list_process:
         for scenario in list_scenarios:
-            # complete_final_res = {}
-            # simple_final_res = {}
-            # for sig_level in list_sig_level:
-            #     complete_final_res[str(sig_level)] = {}
-            #     simple_final_res[str(sig_level)] = {}
-            simple_res_path = os.path.join('..', 'Results_sim_20000', mechanisme, scenario, process + '_EasyRCA_start.json')
-            with open(simple_res_path, 'r') as json_file:
-                simple_final_res = json.load(json_file)
-
-            complete_res_path = os.path.join('..', 'Results_com_20000', mechanisme, scenario, process + '_EasyRCA_start.json')
-            with open(complete_res_path, 'r') as json_file:
-                complete_final_res = json.load(json_file)
+            complete_final_res = {}
+            simple_final_res = {}
+            for sig_level in list_sig_level:
+                complete_final_res[str(sig_level)] = {}
+                simple_final_res[str(sig_level)] = {}
             for sampling_number in list_sampling_number:
-                data_folder_path = os.path.join('..', 'RCA_simulated_data', os.path.join(process, scenario), 'historical_data_20000')
+                data_folder_path = os.path.join('../..', 'RCA_simulated_data', os.path.join(process, scenario), 'offline_data')
                 data_files = [os.path.join(data_folder_path, f) for f in os.listdir(data_folder_path) if os.path.isfile(os.path.join(data_folder_path, f))]
                 res = {}
                 for i in list_num_inters:
                     res[str(i)] = {}
-                for sig_level in list_sig_level:  #np.arange(0.01, 0.2, 0.04).tolist():
+                for sig_level in list_sig_level:
                     Pre = {}
                     Recall = {}
                     F1 = {}
@@ -88,35 +81,33 @@ for mechanisme in list_mechanisme:
                         #establish OSCG based on historical data
                         categorical_nodes = []
                         param_data = pd.read_csv(data_path)
-                        histo_data_info = os.path.join('..', 'RCA_simulated_data', os.path.join(process, scenario), 'data_info_20000', data_path.split('/')[-1].replace('data', 'info').replace('csv', 'json'))
+                        histo_data_info = os.path.join('../..', 'RCA_simulated_data', os.path.join(process, scenario), 'offline_data_info', data_path.split('/')[-1].replace('data', 'info').replace('csv', 'json'))
                         with open(histo_data_info, 'r') as json_file:
                             histo_data_info = json.load(json_file)
                         param_threshold_dict = histo_data_info['nodes_thres']
 
 
-                        json_file_path = os.path.join('..', 'RCA_simulated_data', 'graphs', data_path.split('/')[-1].replace('data', 'graph').replace('csv', 'json'))
+                        json_file_path = os.path.join('../..', 'RCA_simulated_data', 'graphs', data_path.split('/')[-1].replace('data', 'graph').replace('csv', 'json'))
                         with open(json_file_path, 'r') as json_file:
                             json_graph = json.load(json_file)
 
                         for num_inter in list_num_inters:
                             if mechanisme == 'one_path':
-                                data_info = os.path.join('..', 'RCA_simulated_data', os.path.join(process, scenario), 'data_info_same_path_2_inters_2000', data_path.split('/')[-1].replace('data', 'info').replace('csv', 'json'))
+                                data_info = os.path.join('../..', 'RCA_simulated_data', os.path.join(process, scenario), 'online_data_one_path_info', data_path.split('/')[-1].replace('data', 'info').replace('csv', 'json'))
                             else:
-                                data_info = os.path.join('..', 'RCA_simulated_data', os.path.join(process, scenario), 'data_info_2_inters_2000', data_path.split('/')[-1].replace('data', 'info').replace('csv', 'json'))
+                                data_info = os.path.join('../..', 'RCA_simulated_data', os.path.join(process, scenario), 'online_data_different_path_info', data_path.split('/')[-1].replace('data', 'info').replace('csv', 'json'))
                             with open(data_info, 'r') as json_file:
                                 data_info = json.load(json_file)
                             true_root_causes = data_info['intervention_node']
 
-                            # # Convert the loaded JSON data into a NetworkX graph
-                            # true_inter_graph = dict_to_graph(graph_dict=json_graph, inter_nodes=[])
 
                             # find root causes
                             normal_node = []
                             pred_root_causes = []
                             if mechanisme == 'one_path':
-                                actual_data = pd.read_csv(data_path.replace('historical_data_20000', 'actual_data_same_path_2_inters_2000'))
+                                actual_data = pd.read_csv(data_path.replace('offline_data', 'online_data_one_path'))
                             else:
-                                actual_data = pd.read_csv(data_path.replace('historical_data_20000', 'actual_data_2_inters_2000'))
+                                actual_data = pd.read_csv(data_path.replace('offline_data', 'online_data_different_path'))
                             actual_data = actual_data.head(sampling_number)
                             for node in actual_data.columns:
                                 if not (actual_data[node] > param_threshold_dict[node][0]).any():
@@ -154,11 +145,6 @@ for mechanisme in list_mechanisme:
                            anomaly_length=anomaly_length, gamma_max=gamma_max, sig_threshold=sig_level)
                                 erca.run(new_actual_data)    # erca.run(actual_data)
                                 pred_root_causes_dict = erca.root_causes
-                                # pred_root_causes = []
-                                # for type in pred_root_causes_dict.keys():
-                                #     if len(pred_root_causes_dict[type]['roots']) != 0:
-                                #         for cause in pred_root_causes_dict[type]['roots']:
-                                #             pred_root_causes.append(cause)
                                 pred_root_causes = []
                                 for type in pred_root_causes_dict.keys():
                                     if len(pred_root_causes_dict[type]['roots']) != 0:
@@ -202,10 +188,8 @@ for mechanisme in list_mechanisme:
                         complete_final_res[str(sig_level)][str(sampling_number)] = res[str(num_inter)][str(sig_level)]
                         simple_final_res[str(sig_level)][str(sampling_number)] = res[str(num_inter)][str(sig_level)]['MF_SF']
 
-            # simple_res_path = os.path.join('..', 'Results_sim_20000', mechanisme, scenario, process + '_EasyRCA_start.json')
+            simple_res_path = os.path.join('../..', 'Results', process, mechanisme, scenario, 'EasyRCA_star.json')
             with open(simple_res_path, 'w') as json_file:
                 json.dump(simple_final_res, json_file)
 
-            # complete_res_path = os.path.join('..', 'Results_com_20000', mechanisme, scenario, process + '_EasyRCA_start.json')
-            with open(complete_res_path, 'w') as json_file:
-                json.dump(complete_final_res, json_file)
+

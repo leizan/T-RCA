@@ -7,7 +7,6 @@ from tqdm import tqdm
 
 from baseline.cloudrange import cloud_ranger
 
-
 def cal_precision_recall(ground_truth, predicion):
     pred_num = len(predicion)
     truth_num = len(ground_truth)
@@ -21,68 +20,10 @@ def cal_precision_recall(ground_truth, predicion):
     else:
         return (true_pred/pred_num, true_pred/truth_num)
 
-# data_folder_path = os.path.join('..', 'RCA_simulated_data', 'certain', 'historical_data')
-# data_files = [os.path.join(data_folder_path, f) for f in os.listdir(data_folder_path) if os.path.isfile(os.path.join(data_folder_path, f))]
-# res = {}
-# for sig_level in np.arange(0.05, 0.35, 0.05).tolist():
-#     Pre = []
-#     Recall = []
-#     F1 = []
-#     for data_path in tqdm(data_files):
-#         #establish OSCG based on historical data
-#         categorical_nodes = []
-#         data_info = os.path.join('..', 'RCA_simulated_data', 'certain', 'data_info', data_path.split('/')[-1].replace('data', 'info').replace('csv', 'json'))
-#         with open(data_info, 'r') as json_file:
-#             data_info = json.load(json_file)
-#         param_threshold_dict = data_info['nodes_thres']
-#         true_root_causes = data_info['intervention_node']
-#
-#         # find root causes
-#         normal_node = []
-#         pred_root_causes = []
-#         actual_data = pd.read_csv(data_path.replace('historical_data', 'actual_data'))
-#         for node in actual_data.columns:
-#             if not (actual_data[node] > param_threshold_dict[node][0]).any():
-#                 normal_node.append(node)
-#
-#         anomalous_nodes = [i for i in actual_data.columns if i not in normal_node]
-#
-#         anomalies_start_time = {}
-#         for anomalous in anomalous_nodes:
-#             anomalies_start_time[anomalous] = 0
-#
-#         anomaly_length = actual_data.shape[0]
-#         pred_root_causes = cloud_ranger(data=actual_data, anomalous_nodes=anomalous_nodes, anomalies_start_time=anomalies_start_time,
-#                                         anomaly_length=anomaly_length, sig_threshold=sig_level)
-#
-#         # print('True toot causes')
-#         # print(true_root_causes)
-#         #
-#         # print('prediction')
-#         # print(pred_root_causes)
-#
-#         pre, recall = cal_precision_recall(ground_truth=true_root_causes, predicion=pred_root_causes)
-#         Pre.append(pre)
-#         Recall.append(recall)
-#         if pre+recall == 0:
-#             F1.append(0)
-#         else:
-#             F1.append(2*pre*recall/(pre+recall))
-#
-#     res[str(sig_level)] = (np.mean(Pre), np.mean(Recall), np.mean(F1))
-#     print('precison: ' + str(np.mean(Pre)))
-#     print('recall: ' + str(np.mean(Recall)))
-#     print('F1: ' + str(np.mean(F1)))
-#
-# res_path = os.path.join('..', 'Results', 'cloudrange_varying_sig_level.json')
-# with open(res_path, 'w') as json_file:
-#     json.dump(res, json_file)
-
-
 list_mechanisme = ['different_path', 'one_path']
 list_process = ['T-DSCM']
 list_scenarios = ['certain', 'certain_SC', 'uncertain', 'uncertain_SC']
-list_sampling_number = [20, 50, 200] # [10, 100, 500, 1000, 2000]
+list_sampling_number = [10, 20, 50, 100, 200, 500, 1000, 2000]
 list_num_inters = [2]
 list_sig_level = [0.01]
 
@@ -91,20 +32,13 @@ gamma_max = 1
 for mechanisme in list_mechanisme:
     for process in list_process:
         for scenario in list_scenarios:
-            # complete_final_res = {}
-            # simple_final_res = {}
-            # for sig_level in list_sig_level:
-            #     complete_final_res[str(sig_level)] = {}
-            #     simple_final_res[str(sig_level)] = {}
-            simple_res_path = os.path.join('..', 'Results_sim_20000', mechanisme, scenario, process + '_cloudrange.json')
-            with open(simple_res_path, 'r') as json_file:
-                simple_final_res = json.load(json_file)
-
-            complete_res_path = os.path.join('..', 'Results_com_20000', mechanisme, scenario, process + '_cloudrange.json')
-            with open(complete_res_path, 'r') as json_file:
-                complete_final_res = json.load(json_file)
+            complete_final_res = {}
+            simple_final_res = {}
+            for sig_level in list_sig_level:
+                complete_final_res[str(sig_level)] = {}
+                simple_final_res[str(sig_level)] = {}
             for sampling_number in list_sampling_number:
-                data_folder_path = os.path.join('..', 'RCA_simulated_data', os.path.join(process, scenario), 'historical_data_20000')
+                data_folder_path = os.path.join('../..', 'RCA_simulated_data', os.path.join(process, scenario), 'offline_data')
                 data_files = [os.path.join(data_folder_path, f) for f in os.listdir(data_folder_path) if os.path.isfile(os.path.join(data_folder_path, f))]
                 res = {}
                 for i in list_num_inters:
@@ -121,7 +55,7 @@ for mechanisme in list_mechanisme:
                         #establish OSCG based on historical data
                         categorical_nodes = []
                         param_data = pd.read_csv(data_path)
-                        histo_data_info = os.path.join('..', 'RCA_simulated_data', os.path.join(process, scenario), 'data_info_20000', data_path.split('/')[-1].replace('data', 'info').replace('csv', 'json'))
+                        histo_data_info = os.path.join('../..', 'RCA_simulated_data', os.path.join(process, scenario), 'offline_data_info', data_path.split('/')[-1].replace('data', 'info').replace('csv', 'json'))
                         with open(histo_data_info, 'r') as json_file:
                             histo_data_info = json.load(json_file)
                         param_threshold_dict = histo_data_info['nodes_thres']
@@ -133,9 +67,9 @@ for mechanisme in list_mechanisme:
 
                         for num_inter in list_num_inters:
                             if mechanisme == 'one_path':
-                                data_info = os.path.join('..', 'RCA_simulated_data', os.path.join(process, scenario), 'data_info_same_path_2_inters_2000', data_path.split('/')[-1].replace('data', 'info').replace('csv', 'json'))
+                                data_info = os.path.join('../..', 'RCA_simulated_data', os.path.join(process, scenario), 'online_data_one_path_info', data_path.split('/')[-1].replace('data', 'info').replace('csv', 'json'))
                             else:
-                                data_info = os.path.join('..', 'RCA_simulated_data', os.path.join(process, scenario), 'data_info_2_inters_2000', data_path.split('/')[-1].replace('data', 'info').replace('csv', 'json'))
+                                data_info = os.path.join('../..', 'RCA_simulated_data', os.path.join(process, scenario), 'online_data_different_path_info', data_path.split('/')[-1].replace('data', 'info').replace('csv', 'json'))
                             with open(data_info, 'r') as json_file:
                                 data_info = json.load(json_file)
                             true_root_causes = data_info['intervention_node']
@@ -147,9 +81,9 @@ for mechanisme in list_mechanisme:
                             normal_node = []
                             pred_root_causes = []
                             if mechanisme == 'one_path':
-                                actual_data = pd.read_csv(data_path.replace('historical_data_20000', 'actual_data_same_path_2_inters_2000'))
+                                actual_data = pd.read_csv(data_path.replace('offline_data', 'online_data_one_path'))
                             else:
-                                actual_data = pd.read_csv(data_path.replace('historical_data_20000', 'actual_data_2_inters_2000'))
+                                actual_data = pd.read_csv(data_path.replace('offline_data', 'online_data_different_path'))
                             actual_data = actual_data.head(sampling_number)
                             for node in actual_data.columns:
                                 if not (actual_data[node] > param_threshold_dict[node][0]).any():
@@ -193,10 +127,7 @@ for mechanisme in list_mechanisme:
                         complete_final_res[str(sig_level)][str(sampling_number)] = res[str(num_inter)][str(sig_level)]
                         simple_final_res[str(sig_level)][str(sampling_number)] = res[str(num_inter)][str(sig_level)]['MF_SF']
 
-            # simple_res_path = os.path.join('..', 'Results_sim_20000', mechanisme, scenario, process + '_cloudrange.json')
+            simple_res_path = os.path.join('../..', 'Results', process, mechanisme, scenario, 'CloudRanger.json')
             with open(simple_res_path, 'w') as json_file:
                 json.dump(simple_final_res, json_file)
 
-            # complete_res_path = os.path.join('..', 'Results_com_20000', mechanisme, scenario, process + '_cloudrange.json')
-            with open(complete_res_path, 'w') as json_file:
-                json.dump(complete_final_res, json_file)
