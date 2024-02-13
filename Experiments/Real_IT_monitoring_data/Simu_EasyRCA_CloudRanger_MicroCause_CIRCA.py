@@ -140,7 +140,7 @@ def dict_to_graph(graph_dict, inter_nodes, str_to_node):
                 graph.add_edge(str_to_node[parent], str_to_node[child])
     return graph
 
-list_of_methods =  ["EasyRCA", "EasyRCA*", "MicroCause", "CloudRanger", 'CIRCA']
+list_of_methods =  ["EasyRCA", "EasyRCA_star", "MicroCause", "CloudRanger", 'CIRCA']
 
 boolean_variables = []
 dataFrame = pd.DataFrame()
@@ -235,7 +235,7 @@ for method in list_of_methods:
             res_path = os.path.join('..', '..', 'Results', 'IT_monitoring_data', method+'.json')
             with open(res_path, 'w') as json_file:
                 json.dump(res, json_file)
-    elif method == "EasyRCA*":
+    elif method == "EasyRCA_star":
         for sig_level in sig_level_list:
             res = {}
             for nb_anomalous_data in range(10, 110, 10):
