@@ -1,12 +1,18 @@
 import os
+import sys
 
 import numpy as np
 import pandas as pd
 
-from T_RCA import TRCA
+sys.path.append('/home/lzan/Bureau/Dynamic causal graph/root-cause-analysis/RAITIA/baseline/rcd')
+sys.path.append('/home/lzan/Bureau/Dynamic causal graph/root-cause-analysis/RAITIA')
 
-gamma_min = 1
+from baseline.rcd.rcd import top_k_rc
+
 gamma_max = 1
+
+# sig_level = 0.01
+
 
 
 import glob
@@ -33,6 +39,16 @@ column_name_transfer = {'capacity_last_metric_bolt': 'Last_metric_bolt',
                         'Real_time_merger_bolt': 'Real time merger bolt'
 }
 
+name_to_graph = { 'Last_metric_bolt' : 'capacity_last_metric_bolt',
+                  'Elastic_search_bolt' : 'capacity_elastic_search_bolt',
+                  'Pre-Message dispatcher bolt' : 'pre_Message_dispatcher_bolt',
+                  'Check message bolt' : 'check_message_bolt',
+                  'Message dispatcher bolt' : 'message_dispatcher_bolt',
+                  'Metric bolt' : 'metric_bolt',
+                  'Group status information bolt' : 'group_status_information_bolt',
+                  'Real time merger bolt' : 'Real_time_merger_bolt'
+}
+
 true_root_causes = ['Elastic_search_bolt', 'Pre-Message dispatcher bolt']
 
 def calculate_F1(pred_root_causes, true_root_causes):
@@ -56,18 +72,22 @@ def calculate_F1(pred_root_causes, true_root_causes):
 
 
 boolean_variables = []
-param_data = pd.DataFrame()
+dataFrame = pd.DataFrame()
 dict_anomaly = pd.DataFrame()
 directoryPath = '../../real_monitoring_data/'
 
+BINS = 5
+K = 2
 
+LOCAL_ALPHA = 0.01
+DEFAULT_GAMMA = 5
 
 for file_name in glob.glob(directoryPath + '*.csv'):
     if "data_with_incident_between_46683_and_46783" not in file_name:
         col_value = pd.read_csv(file_name, low_memory=False)
         with open(file_name.replace('.csv', '.json')) as json_file:
             x_descri = json.load(json_file)
-        param_data[simplify_node_name[x_descri["metric_name"]]] = col_value['value']
+        dataFrame[name_to_graph[simplify_node_name[x_descri["metric_name"]]]] = col_value['value']
         dict_anomaly[simplify_node_name[x_descri["metric_name"]]] = x_descri["anomalies"]
 
 
@@ -91,22 +111,28 @@ num_repeat = 1 # 50
 
 anomaly_start = 46683
 anomaly_end = 46783
-param_data = param_data.iloc[:anomaly_end]
+data_start_index = 45683
+relative_index_of_accident = anomaly_start - data_start_index
+# nb_anomalous_data = anomaly_end - anomaly_start + 1
 
+param_data = dataFrame.loc[data_start_index: anomaly_start-10]
+# param_data = dataFrame.loc[:anomaly_end]
+
+# param_data = param_data.loc[:anomaly_start-10]
 
 for col in param_data.columns:
-
+    # mean_value = mean(param_data[col])
+    # param_threshold_dict[col] = [ratio_normal*mean_value]
     param_threshold_dict[col] = [np.sort(param_data[col])[int(ratio_normal*param_data[col].shape[0])]]
 
 print(param_threshold_dict)
 
 # discretize the data
-for col in param_data.columns:
-    param_data[col] = param_data[col].values >= param_threshold_dict[col][0]
 
 
 for sig_level in sig_level_list:
     res = {}
+
 
     for sampling_data in range(10, 110, 10):
         records = []
@@ -123,17 +149,14 @@ for sig_level in sig_level_list:
                     actual_data = pd.read_csv(file_name, delimiter=';', usecols=columns_to_load)
 
             actual_data = actual_data.head(sampling_data)
-            for node in actual_data.columns:
-                if not (actual_data[node] > param_threshold_dict[column_name_transfer[node]][0]).any():
-                    normal_node.append(node)
-
-            actual_data.rename(columns=column_name_transfer, inplace=True)
-
-
-
-            pred_root_causes,_ = TRCA(offline_data=param_data, online_data=actual_data, ts_thresholds=param_threshold_dict,
-                                                    gamma_min=gamma_min, gamma_max=gamma_max, sig_level=sig_level, TSCG=None, save_TSCG=False, save_TSCG_path=None,
-                                                    know_normal_node=True, normal_node=normal_node)
+            try:
+                output = top_k_rc(normal_df=param_data, anomalous_df=actual_data, k=K,
+                                            bins=BINS , gamma=DEFAULT_GAMMA)
+                pred_root_causes = output['root_cause']
+                # print('pred_root_causes')
+                # print(pred_root_causes)
+            except:
+                pred_root_causes = []
 
             print('prediction')
             print(pred_root_causes)
@@ -143,7 +166,7 @@ for sig_level in sig_level_list:
         print('Std F1: ' + str(np.around(np.std(records), 2)))
         res[str(sampling_data)] = (np.around(np.mean(records), 2), np.around(np.std(records), 2))
 
-        res_path = os.path.join('..', '..', 'Results_monitoring_data', 'TRCA.json')
-        with open(res_path, 'w') as json_file:
-            json.dump(res, json_file)
+    res_path = os.path.join('..', '..', 'Results', 'IT_monitoring_data', 'RCD.json')
+    with open(res_path, 'w') as json_file:
+        json.dump(res, json_file)
 
