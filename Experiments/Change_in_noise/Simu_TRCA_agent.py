@@ -90,7 +90,6 @@ for mechanisme in list_mechanisme:
 
                         # find root causes
                         normal_node = []
-                        pred_root_causes = []
 
                         for node in actual_data.columns:
                             if np.array_equal(actual_data[node].values, normal_data[node].values[:sampling_number]):
