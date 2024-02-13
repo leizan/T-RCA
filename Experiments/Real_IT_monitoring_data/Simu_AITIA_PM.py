@@ -1,14 +1,8 @@
 import os
-import json
-import pandas as pd
-import numpy as np
-from tqdm import tqdm
-import networkx as nx
-from statistics import mean
-from matplotlib import pyplot as plt
 
-import sys
-sys.path.append('/home/ama/zanl/pythonProject/RAITIA')
+import numpy as np
+import pandas as pd
+
 from baseline.AITIA.Inference import Inference
 
 gamma_max = 1
@@ -95,7 +89,7 @@ num_repeat = 1 # 50
     # param_threshold_dict[col] = [ratio_normal * mean_value + ratio_anomaly * mean_anomaly, ratio_normal * mean_value]
     # param_threshold_dict[col] = [0.5]
 
-actual_data = pd.read_csv('../../monitring_data.csv')
+actual_data = pd.read_csv('../../log_monitoring_data/monitring_data.csv')
 
 anomaly_start = 46683
 anomaly_end = 46783
@@ -158,7 +152,7 @@ for sig_level in sig_level_list:
         print('Std F1: ' + str(np.around(np.std(records), 2)))
         res[str(sampling_data)] = (np.around(np.mean(records), 2), np.around(np.std(records), 2))
 
-    res_path = os.path.join('..', '..', 'Results_monitoring_data', str(sig_level), 'AITIA_PM.json')
+    res_path = os.path.join('..', '..', 'Results', 'IT_monitoring_data', 'AITIA_PM.json')
     with open(res_path, 'w') as json_file:
         json.dump(res, json_file)
 
