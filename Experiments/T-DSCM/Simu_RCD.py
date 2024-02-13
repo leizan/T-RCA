@@ -146,7 +146,7 @@ for mechanisme in list_mechanisme:
                         complete_final_res[str(sig_level)][str(sampling_number)] = res[str(num_inter)][str(sig_level)]
                         simple_final_res[str(sig_level)][str(sampling_number)] = res[str(num_inter)][str(sig_level)]['MF_SF']
 
-            simple_res_path = os.path.join('../..', 'Results', process, mechanisme, scenario, 'RCD.json')
+            simple_res_path = os.path.join('../..', 'Results', process, mechanisme, scenario, 'RCD_2.json')
             with open(simple_res_path, 'w') as json_file:
                 json.dump(simple_final_res, json_file)
 
