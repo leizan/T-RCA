@@ -1,6 +1,6 @@
 # Code Python T-RCA/T-RCA-agent
 
-![Link to PDF File](TRCA.pdf)
+![Link to PDF File](https://github.com/leizan/T-RCA/blob/main/TRCA.pdf)
 
 T-RCA is an algorithm designed to rapidly detect root causes of anomalies in threshold-based IT
 systems. An extension of T-RCA, called T-RCA-agent, has been introduced to address scenarios where root causes are causally related by incorporating interventions from an agent. 
