@@ -1,8 +1,0 @@
--r build/requirements.txt
-
-black
-pylint
-
-coverage
-pytest
-pytest-benchmark

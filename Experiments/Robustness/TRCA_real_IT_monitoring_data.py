@@ -1,16 +1,11 @@
 import os
-import json
-import pandas as pd
-import numpy as np
-from tqdm import tqdm
-import networkx as nx
-from raitia import RAITIA2011
-from tigramite.pcmci import PCMCI
-from tigramite import data_processing as pp
-from tigramite.independence_tests.gsquared import Gsquared
-from statistics import mean
-from matplotlib import pyplot as plt
 
+import numpy as np
+import pandas as pd
+
+from T_RCA import TRCA
+
+gamma_min = 1
 gamma_max = 1
 
 # sig_level = 0.01
@@ -110,38 +105,7 @@ for ratio_normal in list_normal_ratio:
 
     print(param_threshold_dict)
 
-    # discretize the data
-    for col in param_data.columns:
-        param_data[col] = param_data[col].values >= param_threshold_dict[col][0]
-
-
     for sig_level in sig_level_list:
-
-        # genarate the OSCG
-        data_frame = pp.DataFrame(param_data.values, var_names=param_data.columns) # ,data_type=np.ones(shape=param_data.values.shape)
-        Gsquard_test = Gsquared(significance='analytic')
-        pcmci = PCMCI(dataframe=data_frame, cond_ind_test=Gsquard_test, verbosity=-1)
-
-        results = pcmci.run_pcmci(tau_min=1, tau_max=gamma_max, pc_alpha=sig_level, alpha_level=sig_level)
-        matrix_graph = results['graph']
-
-        OSCG = nx.DiGraph()
-        OSCG.add_nodes_from(param_data.columns)
-
-        for i in range(len(param_data.columns)):
-            for m in range(len(param_data.columns)):
-                if matrix_graph[i,m,1] == '-->':
-                    OSCG.add_edge(param_data.columns[i], param_data.columns[m])
-                elif matrix_graph[i,m,1] == '<--':
-                    OSCG.add_edge(param_data.columns[m], param_data.columns[i])
-
-        # nx.draw(OSCG, with_labels=True, font_weight='bold')
-        # plt.show()
-        #
-        # print("########")
-        # print(OSCG.edges)
-        # print("########")
-
         for sampling_data in [50]: #range(10, 110, 10):
             records = []
             for index in range(num_repeat):
@@ -161,18 +125,13 @@ for ratio_normal in list_normal_ratio:
                     if not (actual_data[node] > param_threshold_dict[column_name_transfer[node]][0]).any():
                         normal_node.append(node)
 
-                print('Abnormal nodes')
-                print([i for i in list(OSCG.nodes) if i not in normal_node])
+                actual_data.rename(columns=column_name_transfer, inplace=True)
 
-                if len(normal_node) != 0:
-                    OSCG.remove_nodes_from(normal_node)
-                for node in OSCG.nodes:
-                    parents_of_node = list(OSCG.predecessors(node))
-                    if len(parents_of_node) == 0:
-                        pred_root_causes.append(node)
-                    else:
-                        if (len(parents_of_node) == 1) and parents_of_node[0] == node:
-                            pred_root_causes.append(node)
+
+
+                pred_root_causes,_ = TRCA(offline_data=param_data, online_data=actual_data, ts_thresholds=param_threshold_dict,
+                                                    gamma_min=gamma_min, gamma_max=gamma_max, sig_level=sig_level, TSCG=None, save_TSCG=False, save_TSCG_path=None,
+                                                    know_normal_node=True, normal_node=normal_node)
 
                 print('prediction')
                 print(pred_root_causes)
@@ -182,7 +141,7 @@ for ratio_normal in list_normal_ratio:
             print('Std F1: ' + str(np.around(np.std(records), 2)))
             res[str(ratio_normal)][str(sampling_data)] = (np.around(np.mean(records), 2), np.around(np.std(records), 2))
 
-res_path = os.path.join('..', '..', 'Results_monitoring_data', str(sig_level), 'PC_vary_ratio.json')
+res_path = os.path.join('..', '..', 'Results_robustness', 'IT_monitoring_data', 'TRCA.json')
 with open(res_path, 'w') as json_file:
     json.dump(res, json_file)
 
