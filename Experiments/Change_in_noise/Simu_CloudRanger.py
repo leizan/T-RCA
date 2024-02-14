@@ -4,7 +4,14 @@ import networkx as nx
 
 import os
 import json
+import sys
 from tqdm import tqdm
+
+from pathlib import Path
+file = Path(__file__).resolve()
+parent, root = file.parent, file.parents[2]
+sys.path.append(str(root))
+os.chdir(str(parent))
 
 from baseline.cloudrange import cloud_ranger
 

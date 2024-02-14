@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 
 import numpy as np
 import pandas as pd
@@ -11,6 +12,12 @@ from collections import defaultdict
 from typing import Dict
 from typing import Sequence
 from typing import Tuple
+
+from pathlib import Path
+file = Path(__file__).resolve()
+parent, root = file.parent, file.parents[2]
+sys.path.append(str(root))
+os.chdir(str(parent))
 
 from baseline.circa.alg.ci import RHTScorer
 from baseline.circa.alg.ci.anm import ANMRegressor

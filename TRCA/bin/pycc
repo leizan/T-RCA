@@ -1,0 +1,3 @@
+#!/home/lzan/Bureau/T-RCA/TRCA/bin/python
+from numba.pycc import main
+main()

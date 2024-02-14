@@ -1,7 +1,16 @@
 import os
+import glob
+import json
+import sys
 
 import numpy as np
 import pandas as pd
+
+from pathlib import Path
+file = Path(__file__).resolve()
+parent, root = file.parent, file.parents[2]
+sys.path.append(str(root))
+os.chdir(str(parent))
 
 from T_RCA import TRCA
 
@@ -9,11 +18,6 @@ gamma_min = 1
 gamma_max = 1
 
 # sig_level = 0.01
-
-
-
-import glob
-import json
 
 simplify_node_name = {
     'Real time merger bolt de not_found sur Storm-1': 'Real time merger bolt',

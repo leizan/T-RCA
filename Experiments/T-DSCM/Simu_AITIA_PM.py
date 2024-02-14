@@ -1,10 +1,17 @@
 import json
 import os
+import sys
 
 import networkx as nx
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+
+from pathlib import Path
+file = Path(__file__).resolve()
+parent, root = file.parent, file.parents[2]
+sys.path.append(str(root))
+os.chdir(str(parent))
 
 from baseline.AITIA.Inference import Inference
 

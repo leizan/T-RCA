@@ -2,13 +2,16 @@ import json
 import os
 import sys
 
-sys.path.append('/home/lzan/Bureau/Dynamic causal graph/root-cause-analysis/RAITIA/baseline/rcd')
-sys.path.append('/home/lzan/Bureau/Dynamic causal graph/root-cause-analysis/RAITIA')
-
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import networkx as nx
+
+from pathlib import Path
+file = Path(__file__).resolve()
+parent, root = file.parent, file.parents[2]
+sys.path.append(str(root))
+os.chdir(str(parent))
 
 from baseline.rcd.rcd import top_k_rc
 

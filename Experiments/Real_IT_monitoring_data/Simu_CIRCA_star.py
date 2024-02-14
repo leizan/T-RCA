@@ -1,4 +1,5 @@
 import os
+import sys
 # from tigramite.independence_tests.gsquared import Gsquared
 from collections import defaultdict
 from typing import Dict
@@ -12,6 +13,12 @@ from sklearn.linear_model import LinearRegression
 from tigramite import data_processing as pp
 from tigramite.independence_tests.parcorr import ParCorr
 from tigramite.pcmci import PCMCI
+
+from pathlib import Path
+file = Path(__file__).resolve()
+parent, root = file.parent, file.parents[2]
+sys.path.append(str(root))
+os.chdir(str(parent))
 
 from baseline.circa.alg.ci import RHTScorer
 from baseline.circa.alg.ci.anm import ANMRegressor

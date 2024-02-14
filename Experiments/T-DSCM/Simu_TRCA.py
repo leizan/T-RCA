@@ -1,10 +1,20 @@
-import os
 import json
-import pandas as pd
-import numpy as np
-from tqdm import tqdm
+import os
+import sys
+
 import networkx as nx
+import numpy as np
+import pandas as pd
+from tqdm import tqdm
+
+from pathlib import Path
+file = Path(__file__).resolve()
+parent, root = file.parent, file.parents[2]
+sys.path.append(str(root))
+os.chdir(str(parent))
+
 from T_RCA import TRCA
+
 
 
 def dict_to_graph(graph_dict, inter_nodes):

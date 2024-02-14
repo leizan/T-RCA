@@ -1,10 +1,18 @@
 import os
 import json
+import sys
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
 import networkx as nx
 import time
+
+from pathlib import Path
+file = Path(__file__).resolve()
+parent, root = file.parent, file.parents[2]
+sys.path.append(str(root))
+os.chdir(str(parent))
+
 from baseline.microcause import micro_cause
 from baseline.cloudrange import cloud_ranger
 from collections import defaultdict

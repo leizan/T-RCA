@@ -1,12 +1,19 @@
 import os
 import json
+import sys
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-import sys
-sys.path.append('/home/ama/zanl/pythonProject/RAITIA')
-from baseline.AITIA.Inference import Inference
 import networkx as nx
+
+from pathlib import Path
+file = Path(__file__).resolve()
+parent, root = file.parent, file.parents[2]
+sys.path.append(str(root))
+os.chdir(str(parent))
+
+from baseline.AITIA.Inference import Inference
+
 
 
 def dict_to_graph(graph_dict, inter_nodes):

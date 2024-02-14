@@ -1,11 +1,18 @@
 import os
+import sys
 import json
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
 import networkx as nx
-from T_RCA import TRCA
 
+from pathlib import Path
+file = Path(__file__).resolve()
+parent, root = file.parent, file.parents[2]
+sys.path.append(str(root))
+os.chdir(str(parent))
+
+from T_RCA import TRCA
 
 def change_calue(value, change):
     res = []
