@@ -8,8 +8,8 @@ Both T-RCA and T-RCA-agent leverage causal discovery from offline data and engag
 For more details check our paper: Zan, L., Assaad, C.K., Devijver, E., & Gaussier, É. (2024). On the Fly Detection of Root Causes from Observed Data with Application to IT Systems (https://arxiv.org/pdf/2402.06500.pdf).
 ## Required python packages
 
-Main packages: python=3.8, pandas, networkx, tigramite, joblib (needed by T-RCA and T-RCA-agent), 
-sklearn, causal-learn, yaml (needed by other methods) 
+Main packages: python=3.8, pandas, networkx, tigramite, joblib (required by T-RCA and T-RCA-agent), 
+sklearn, causal-learn, yaml (required by other methods) 
 
 ### Install dependencies:
 ```bash
